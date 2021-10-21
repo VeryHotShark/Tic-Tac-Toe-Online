@@ -1,17 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using UnityEngine;
 
 /// <summary>Sent from server to client.</summary>
 public enum ServerPackets {
     welcome = 1,
-    udpTest = 2
+    spawnPlayer,
+    playerPosition,
+    playerRotation
 }
 
 /// <summary>Sent from client to server.</summary>
 public enum ClientPackets {
     welcomeReceived = 1,
-    udpTestReceived = 2
+    playerMovement
 }
 
 public class Packet : IDisposable {
@@ -85,7 +88,8 @@ public class Packet : IDisposable {
             buffer.Clear(); // Clear buffer
             readableBuffer = null;
             readPos = 0; // Reset readPos
-        } else {
+        }
+        else {
             readPos -= 4; // "Unread" the last read int
         }
     }
@@ -133,6 +137,21 @@ public class Packet : IDisposable {
         Write(_value.Length); // Add the length of the string to the packet
         buffer.AddRange(Encoding.ASCII.GetBytes(_value)); // Add the string itself
     }
+    /// <summary>Adds a Vector3 to the packet.</summary>
+    /// <param name="_value">The Vector3 to add.</param>
+    public void Write(Vector3 _value) {
+        Write(_value.x);
+        Write(_value.y);
+        Write(_value.z);
+    }
+    /// <summary>Adds a Quaternion to the packet.</summary>
+    /// <param name="_value">The Quaternion to add.</param>
+    public void Write(Quaternion _value) {
+        Write(_value.x);
+        Write(_value.y);
+        Write(_value.z);
+        Write(_value.w);
+    }
     #endregion
 
     #region Read Data
@@ -147,7 +166,8 @@ public class Packet : IDisposable {
                 readPos += 1; // Increase readPos by 1
             }
             return _value; // Return the byte
-        } else {
+        }
+        else {
             throw new Exception("Could not read value of type 'byte'!");
         }
     }
@@ -164,7 +184,8 @@ public class Packet : IDisposable {
                 readPos += _length; // Increase readPos by _length
             }
             return _value; // Return the bytes
-        } else {
+        }
+        else {
             throw new Exception("Could not read value of type 'byte[]'!");
         }
     }
@@ -180,7 +201,8 @@ public class Packet : IDisposable {
                 readPos += 2; // Increase readPos by 2
             }
             return _value; // Return the short
-        } else {
+        }
+        else {
             throw new Exception("Could not read value of type 'short'!");
         }
     }
@@ -196,7 +218,8 @@ public class Packet : IDisposable {
                 readPos += 4; // Increase readPos by 4
             }
             return _value; // Return the int
-        } else {
+        }
+        else {
             throw new Exception("Could not read value of type 'int'!");
         }
     }
@@ -212,7 +235,8 @@ public class Packet : IDisposable {
                 readPos += 8; // Increase readPos by 8
             }
             return _value; // Return the long
-        } else {
+        }
+        else {
             throw new Exception("Could not read value of type 'long'!");
         }
     }
@@ -228,7 +252,8 @@ public class Packet : IDisposable {
                 readPos += 4; // Increase readPos by 4
             }
             return _value; // Return the float
-        } else {
+        }
+        else {
             throw new Exception("Could not read value of type 'float'!");
         }
     }
@@ -244,7 +269,8 @@ public class Packet : IDisposable {
                 readPos += 1; // Increase readPos by 1
             }
             return _value; // Return the bool
-        } else {
+        }
+        else {
             throw new Exception("Could not read value of type 'bool'!");
         }
     }
@@ -260,9 +286,20 @@ public class Packet : IDisposable {
                 readPos += _length; // Increase readPos by the length of the string
             }
             return _value; // Return the string
-        } catch {
+        }
+        catch {
             throw new Exception("Could not read value of type 'string'!");
         }
+    }
+    /// <summary>Reads a Vector3 from the packet.</summary>
+    /// <param name="_moveReadPos">Whether or not to move the buffer's read position.</param>
+    public Vector3 ReadVector3(bool _moveReadPos = true) {
+        return new Vector3(ReadFloat(_moveReadPos), ReadFloat(_moveReadPos), ReadFloat(_moveReadPos));
+    }
+    /// <summary>Reads a Quaternion from the packet.</summary>
+    /// <param name="_moveReadPos">Whether or not to move the buffer's read position.</param>
+    public Quaternion ReadQuaternion(bool _moveReadPos = true) {
+        return new Quaternion(ReadFloat(_moveReadPos), ReadFloat(_moveReadPos), ReadFloat(_moveReadPos), ReadFloat(_moveReadPos));
     }
     #endregion
 

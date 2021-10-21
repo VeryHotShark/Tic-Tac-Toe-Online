@@ -16,6 +16,7 @@ public class Client : MonoBehaviour {
     public TCP tcp;
     public UDP udp;
 
+    private bool isConnected = false;
     private delegate void PacketHandler(Packet packet);
     private static Dictionary<int, PacketHandler> _packetHandlers;
 
@@ -31,8 +32,14 @@ public class Client : MonoBehaviour {
         udp = new UDP();
     }
 
+    private void OnApplicationQuit() {
+        Disconnect();
+    }
+
     public void ConnectToServer() {
-        IntiializeClientData();
+        InitializeClientData();
+
+        isConnected = true;
         tcp.Connect();
     }
 
@@ -71,7 +78,8 @@ public class Client : MonoBehaviour {
                 if (socket != null) {
                     _stream.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null);
                 }
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 Debug.Log($"Error sending data to server via TCP: {ex}");
             }
         }
@@ -81,20 +89,19 @@ public class Client : MonoBehaviour {
                 int byteLength = _stream.EndRead(result);
 
                 if (byteLength <= 0) {
-                    // TODO: disconnect
+                    instance.Disconnect();
                     return;
                 }
 
                 byte[] data = new byte[byteLength];
                 Array.Copy(_receiveBuffer, data, byteLength);
 
-                // TODO: handle data
                 _receivedData.Reset(HandleData(data));
-
                 _stream.BeginRead(_receiveBuffer, 0, dataBufferSize, ReceiveCallback, null);
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 Console.WriteLine($"Error receiving TCP data: {ex}");
-                // TODO: disconnect
+                Disconnect();
             }
         }
 
@@ -133,6 +140,14 @@ public class Client : MonoBehaviour {
 
             return false;
         }
+
+        public void Disconnect() {
+            instance.Disconnect();
+            _stream = null;
+            _receivedData = null;
+            _receiveBuffer = null;
+            socket = null;
+        }
     }
 
     public class UDP {
@@ -161,7 +176,8 @@ public class Client : MonoBehaviour {
                 if (socket != null)
                     socket.BeginSend(packet.ToArray(), packet.Length(), null, null);
 
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 Debug.Log($"Error sending data to server via UDP: {ex}");
             }
         }
@@ -172,13 +188,14 @@ public class Client : MonoBehaviour {
                 socket.BeginReceive(ReceiveCallback, null);
 
                 if (data.Length < 4) {
-                    // TODO : disconnect
+                    instance.Disconnect();
                     return;
                 }
 
                 HandleData(data);
-            } catch (Exception ex) {
-                // TODO discaonnect
+            }
+            catch (Exception ex) {
+                Disconnect();
             }
         }
 
@@ -195,15 +212,34 @@ public class Client : MonoBehaviour {
                 }
             });
         }
+
+        public void Disconnect() {
+            instance.Disconnect();
+
+            endPoint = null;
+            socket = null;
+        }
     }
 
-    private void IntiializeClientData() {
-        _packetHandlers = new Dictionary<int, PacketHandler>() {
-            { (int) ServerPackets.welcome, ClientHandle.Welcome },
-            {(int) ServerPackets.udpTest, ClientHandle.UDPTest }
+    private void InitializeClientData() {
+        _packetHandlers = new Dictionary<int, PacketHandler>() { {
+                (int) ServerPackets.welcome, ClientHandle.Welcome }, {
+                (int) ServerPackets.spawnPlayer, ClientHandle.SpawnPlayer }, {
+                (int) ServerPackets.playerPosition, ClientHandle.PlayerPosition }, {
+                (int) ServerPackets.playerRotation, ClientHandle.PlayerRotation },
         };
 
         Debug.Log("Initialized Packets");
+    }
+
+    private void Disconnect() {
+        if (isConnected) {
+            isConnected = false;
+            tcp.socket.Close();
+            udp.socket.Close();
+
+            Debug.Log("Disconnected from server ");
+        }
     }
 
 }
