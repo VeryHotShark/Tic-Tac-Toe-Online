@@ -199,7 +199,7 @@ namespace GameServer
                         {
                                 if (client.player != null)
                                 {
-                                            ServerSend.SpawnPlayer(id, client.player);
+                                            ServerSend.SpawnPlayer(client.id, player);
                                 }
                         }
                 }
